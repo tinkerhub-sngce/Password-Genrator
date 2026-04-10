@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CryptoPass — Secure Password Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --surface3: #1f1f28;
+    --border: #2a2a38;
+    --border2: #3a3a50;
+    --accent: #7c6bff;
+    --accent2: #ff6b9d;
+    --accent3: #6bffda;
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --dim: #3a3a55;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+    --green: #4effa0;
+    --amber: #ffbe3d;
+    --red: #ff5c5c;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(124,107,255,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(255,107,157,0.05) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 3rem;
+    animation: fadeDown .6s ease both;
+  }
+
+  .header-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: .75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header-tag::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .header h1 {
+    font-family: var(--sans);
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -.03em;
+    color: var(--text);
+    margin-bottom: .5rem;
+  }
+
+  .header h1 span {
+    color: var(--accent);
+    position: relative;
+  }
+
+  .header-sub {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .05em;
+  }
+
+  .pill-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  .pill {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .1em;
+    padding: 3px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    color: var(--muted);
+  }
+
+  /* Mode selector */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 1.5rem;
+    animation: fadeUp .5s .1s ease both;
+  }
+
+  .mode-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 10px;
+    cursor: pointer;
+    background: var(--surface);
+    transition: border-color .2s, background .2s, transform .15s;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mode-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+
+  .mode-card.ig::before { background: linear-gradient(135deg, rgba(255,107,157,.08), rgba(255,190,61,.05)); }
+  .mode-card.wa::before { background: linear-gradient(135deg, rgba(110,220,100,.08), rgba(107,255,218,.05)); }
+  .mode-card.gm::before { background: linear-gradient(135deg, rgba(66,133,244,.08), rgba(124,107,255,.05)); }
+  .mode-card.cu::before { background: linear-gradient(135deg, rgba(124,107,255,.08), rgba(107,255,218,.05)); }
+
+  .mode-card:hover::before, .mode-card.active::before { opacity: 1; }
+
+  .mode-card:hover, .mode-card.active {
+    border-color: var(--border2);
+    transform: translateY(-1px);
+  }
+
+  .mode-card.active { border-color: var(--accent) !important; background: var(--surface2); }
+
+  .mode-icon {
+    font-size: 20px;
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  .mode-name {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    display: block;
+  }
+
+  .mode-range {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 2px;
+    display: block;
+  }
+
+  /* Options panel */
+  .options-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    animation: fadeUp .5s .2s ease both;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .opt-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .opt-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  /* Slider */
+  .slider-wrap { display: flex; align-items: center; gap: 10px; }
+
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--dim);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 8px rgba(124,107,255,.4);
+    transition: box-shadow .2s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 14px rgba(124,107,255,.6);
+  }
+
+  .slider-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 26px;
+    text-align: right;
+  }
+
+  /* Checkboxes */
+  .checks-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface2);
+    transition: border-color .15s, background .15s;
+    user-select: none;
+  }
+
+  .check-item:hover { border-color: var(--border2); background: var(--surface3); }
+
+  .check-item input { display: none; }
+
+  .check-box {
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border2);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all .15s;
+    font-size: 9px;
+  }
+
+  .check-item input:checked ~ .check-box {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .check-label { font-size: 12px; color: var(--text); }
+  .check-label small { display: block; font-size: 9px; color: var(--muted); font-family: var(--mono); }
+
+  /* Custom panel */
+  .custom-panel {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-top: .75rem;
+    display: none;
+    gap: .75rem;
+    flex-direction: column;
+  }
+
+  .custom-panel.show { display: flex; }
+
+  .exc-input {
+    width: 100%;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color .2s;
+  }
+
+  .exc-input:focus { border-color: var(--accent); }
+  .exc-input::placeholder { color: var(--dim); }
+
+  /* Output */
+  .output-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+    animation: fadeUp .5s .3s ease both;
+  }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .output-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .mode-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .1em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(124,107,255,.15);
+    color: var(--accent);
+    border: 1px solid rgba(124,107,255,.25);
+  }
+
+  .pw-field {
+    padding: 1.5rem 1.25rem;
+    position: relative;
+  }
+
+  .pw-text {
+    font-family: var(--mono);
+    font-size: clamp(14px, 2.5vw, 20px);
+    font-weight: 700;
+    color: var(--text);
+    word-break: break-all;
+    letter-spacing: .06em;
+    line-height: 1.6;
+    min-height: 32px;
+    transition: opacity .2s;
+  }
+
+  .pw-text.generating { opacity: .4; }
+
+  .pw-text .char-upper { color: var(--accent); }
+  .pw-text .char-num { color: var(--accent3); }
+  .pw-text .char-sym { color: var(--accent2); }
+  .pw-text .char-lower { color: var(--text); }
+
+  /* Entropy bar */
+  .entropy-wrap { padding: 0 1.25rem 1.25rem; }
+
+  .entropy-track {
+    height: 4px;
+    background: var(--dim);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: .5rem;
+  }
+
+  .entropy-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .5s cubic-bezier(.4,0,.2,1), background .4s;
+    position: relative;
+  }
+
+  .entropy-bar::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: inherit;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+  }
+
+  .stat-cell {
+    background: var(--surface);
+    padding: .75rem 1rem;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .stat-key {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+    animation: fadeUp .5s .4s ease both;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 13px 20px;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: transform .15s, box-shadow .2s, opacity .2s;
+    letter-spacing: -.01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .btn:active { transform: scale(.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(124,107,255,.3);
+  }
+
+  .btn-primary:hover { box-shadow: 0 4px 28px rgba(124,107,255,.5); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  .btn-secondary:hover { background: var(--surface3); border-color: var(--accent); color: var(--accent); }
+
+  .btn-icon { font-size: 16px; }
+
+  .copy-success {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--green);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    padding: 10px 20px;
+    border-radius: 8px;
+    opacity: 0;
+    transition: all .3s ease;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .copy-success.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Storage info */
+  .storage-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    display: none;
+    animation: fadeUp .4s ease both;
+  }
+
+  .storage-card.show { display: block; }
+
+  .storage-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: .4rem;
+  }
+
+  .storage-text {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* History */
+  .history-section {
+    animation: fadeUp .5s .5s ease both;
+    display: none;
+  }
+
+  .history-section.show { display: block; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .hist-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+
+  .hist-item:hover { border-color: var(--border2); background: var(--surface2); }
+
+  .hist-pw {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hist-meta {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .hist-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  /* Animations */
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+  .generating-anim { animation: pulse .6s ease infinite; }
+
+  /* Responsive */
+  @media (max-width: 500px) {
+    .mode-grid { grid-template-columns: repeat(2, 1fr); }
+    .options-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .btn-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-tag">Cryptographic Password Engine</div>
+    <h1>Crypto<span>Pass</span></h1>
+    <div class="header-sub">AES-256 entropy · Zero-pattern generation · CSPRNG-powered</div>
+    <div class="pill-row">
+      <span class="pill">80–128+ bit entropy</span>
+      <span class="pill">Brute-force resistant</span>
+      <span class="pill">No rainbow-table match</span>
+      <span class="pill">Platform-aware</span>
+    </div>
+  </div>
+
+  <!-- Mode Selector -->
+  <div class="mode-grid">
+    <div class="mode-card ig active" onclick="setMode('instagram', this)">
+      <span class="mode-icon">📸</span>
+      <span class="mode-name">Instagram</span>
+      <span class="mode-range">12–18 chars</span>
+    </div>
+    <div class="mode-card wa" onclick="setMode('whatsapp', this)">
+      <span class="mode-icon">💬</span>
+      <span class="mode-name">WhatsApp</span>
+      <span class="mode-range">14–20 chars</span>
+    </div>
+    <div class="mode-card gm" onclick="setMode('gmail', this)">
+      <span class="mode-icon">📧</span>
+      <span class="mode-name">Gmail</span>
+      <span class="mode-range">18–24 chars</span>
+    </div>
+    <div class="mode-card cu" onclick="setMode('custom', this)">
+      <span class="mode-icon">⚙️</span>
+      <span class="mode-name">Custom</span>
+      <span class="mode-range">8–64 chars</span>
+    </div>
+  </div>
+
+  <!-- Options -->
+  <div class="options-panel">
+    <div class="options-grid">
+      <div class="opt-group">
+        <div class="opt-label">Length</div>
+        <div class="slider-wrap">
+          <input type="range" id="len-slider" min="8" max="64" value="16" step="1" oninput="onSlider(this)"/>
+          <div class="slider-val" id="len-val">16</div>
+        </div>
+      </div>
+      <div class="opt-group">
+        <div class="opt-label">Character sets</div>
+        <div class="checks-grid">
+          <label class="check-item"><input type="checkbox" id="c-upper" checked onchange="syncCustom()"><div class="check-box">✓</div><div class="check-label">Uppercase<small>A–Z</small></div></label>
+          <label class="check-item"><input type="checkbox" id="c-lower" checked onchange="syncCustom()"><div class="check-box">✓</div><div class="check-label">Lowercase<small>a–z</small></div></label>
+          <label class="check-item"><input type="checkbox" id="c-num" checked onchange="syncCustom()"><div class="check-box">✓</div><div class="check-label">Numbers<small>0–9</small></div></label>
+          <label class="check-item"><input type="checkbox" id="c-sym" checked onchange="syncCustom()"><div class="check-box">✓</div><div class="check-label">Symbols<small>!@#$%&amp;</small></div></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom extras -->
+    <div class="custom-panel" id="custom-panel">
+      <div class="opt-label">Exclude characters (optional)</div>
+      <input class="exc-input" type="text" id="c-exclude" placeholder="e.g. 0O1lI — ambiguous characters to skip"/>
+      <label class="check-item" style="width:fit-content"><input type="checkbox" id="c-passphrase" onchange="syncCustom()"><div class="check-box">✓</div><div class="check-label">Passphrase mode<small>word-chain format</small></div></label>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="output-section">
+    <div class="output-header">
+      <span class="output-label">Generated password</span>
+      <span class="mode-badge" id="mode-badge">INSTAGRAM</span>
+    </div>
+    <div class="pw-field">
+      <div class="pw-text" id="pw-out">Click generate to create a secure password</div>
+    </div>
+    <div class="entropy-wrap">
+      <div class="entropy-track">
+        <div class="entropy-bar" id="entropy-bar" style="width:0%;background:var(--accent)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--muted);">
+        <span>0 bits</span><span id="entropy-label">Entropy strength</span><span>128+ bits</span>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-cell">
+        <span class="stat-val" id="s-entropy">—</span>
+        <span class="stat-key">Entropy</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-val" id="s-len">—</span>
+        <span class="stat-key">Length</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-val" id="s-pool">—</span>
+        <span class="stat-key">Pool</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-val" id="s-rating" style="font-size:11px;">—</span>
+        <span class="stat-key">Rating</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="generate()">
+      <span class="btn-icon">⚡</span> Generate
+    </button>
+    <button class="btn btn-secondary" onclick="copyPw()">
+      <span class="btn-icon">⧉</span> Copy
+    </button>
+    <button class="btn btn-secondary" onclick="refreshPw()" title="Regenerate">
+      <span class="btn-icon">↺</span>
+    </button>
+  </div>
+
+  <!-- Storage tip -->
+  <div class="storage-card" id="storage-card">
+    <div class="storage-title">Storage Recommendation</div>
+    <div class="storage-text" id="storage-text"></div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section" id="history-section">
+    <div class="section-label">Session history</div>
+    <div id="hist-list"></div>
+  </div>
+
+</div>
+
+<div class="copy-success" id="copy-toast">✓ PASSWORD COPIED</div>
+
+<script>
+const WORDS = ["crimson","harbor","quartz","falcon","nebula","ember","cipher","tundra","prism","vortex","lantern","cobalt","zenith","marble","phantom","solstice","cascade","velvet","onyx","glacier","aurora","radiant","obsidian","tempest","orbit","crystal","haven","surge","basalt","lunar","delta","vertex","cinder","alpine","specter","forge","flux","ridge","mystic","comet","stone","silver","vault","echo","petal","blaze","titan","drift","crown","fable","wraith","hollow","iron","glyph","siege","rune","stark","nova","dusk","crest"];
+
+const MODES_CFG = {
+  instagram: { label:'INSTAGRAM', minLen:12, maxLen:18, sym:'@#$!%&*-_+=' },
+  whatsapp:  { label:'WHATSAPP',  minLen:14, maxLen:20, sym:'@#!-_+=' },
+  gmail:     { label:'GMAIL',     minLen:18, maxLen:24, sym:'@#$!%&*-_+=?~' },
+  custom:    { label:'CUSTOM',    minLen:8,  maxLen:64, sym:'!@#$%^&*()-_+=[]{}|;:,.<>?' }
+};
+
+const STORAGE_TIPS = {
+  instagram: 'Store in a dedicated password manager (Bitwarden, 1Password, or KeePass). Enable Instagram 2FA via authenticator app — not SMS. Rotate every 6 months.',
+  whatsapp:  'Use a password manager vault for backup. WhatsApp primarily authenticates via phone number — apply this password to linked devices and account PIN. Keep a secure offline backup.',
+  gmail:     'CRITICAL ACCOUNT — store in a dedicated vault with offline encrypted backup. Enable hardware FIDO2 key (YubiKey) + authenticator 2FA immediately. This account controls password resets for most other services. Rotate annually.',
+  custom:    'Store in a reputable password manager. Never reuse this password across platforms. Enable 2FA wherever the platform supports it. Avoid storing in plaintext files or notes apps.'
+};
+
+let currentMode = 'instagram';
+let currentPw = '';
+let history = [];
+
+function cryptoRand(max) {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] % max;
+}
+
+function buildPool(cfg) {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const nums  = '23456789';
+  let pool = '';
+  if (cfg.upper) pool += upper;
+  if (cfg.lower) pool += lower;
+  if (cfg.num)   pool += nums;
+  if (cfg.sym)   pool += cfg.symSet;
+  const excl = (cfg.exclude || '').split('');
+  return pool.split('').filter(c => !excl.includes(c)).join('');
+}
+
+function generateRandom(len, pool) {
+  let pw = '';
+  const chars = pool.split('');
+  for (let i = 0; i < len; i++) pw += chars[cryptoRand(chars.length)];
+  return pw;
+}
+
+function generatePassphrase() {
+  const wCount = 3 + cryptoRand(2);
+  const words = [];
+  for (let i = 0; i < wCount; i++) words.push(WORDS[cryptoRand(WORDS.length)]);
+  const seps = ['!','@','#','$','&','*','-','_','+'];
+  const sep = seps[cryptoRand(seps.length)];
+  const num = String(cryptoRand(900) + 100);
+  return words.map((w, i) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(sep) + sep + num;
+}
+
+function calcEntropy(len, poolSize) {
+  if (poolSize === 0) return 0;
+  return Math.round(len * Math.log2(poolSize));
+}
+
+function getRating(bits) {
+  if (bits >= 110) return { label: 'Military-grade', color: '#7c6bff' };
+  if (bits >= 80)  return { label: 'Strong', color: '#4effa0' };
+  return { label: 'Moderate', color: '#ffbe3d' };
+}
+
+function colorizePassword(pw) {
+  return pw.split('').map(c => {
+    if (/[A-Z]/.test(c)) return `<span class="char-upper">${c}</span>`;
+    if (/[0-9]/.test(c)) return `<span class="char-num">${c}</span>`;
+    if (/[^a-zA-Z0-9]/.test(c)) return `<span class="char-sym">${c}</span>`;
+    return `<span class="char-lower">${c}</span>`;
+  }).join('');
+}
+
+function setMode(m, el) {
+  currentMode = m;
+  document.querySelectorAll('.mode-card').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('mode-badge').textContent = MODES_CFG[m].label;
+
+  const cp = document.getElementById('custom-panel');
+  if (m === 'custom') {
+    cp.classList.add('show');
+  } else {
+    cp.classList.remove('show');
+    const cfg = MODES_CFG[m];
+    const mid = Math.round((cfg.minLen + cfg.maxLen) / 2);
+    const slider = document.getElementById('len-slider');
+    slider.min = cfg.minLen; slider.max = cfg.maxLen; slider.value = mid;
+    document.getElementById('len-val').textContent = mid;
+    document.getElementById('c-upper').checked = true;
+    document.getElementById('c-lower').checked = true;
+    document.getElementById('c-num').checked = true;
+    document.getElementById('c-sym').checked = true;
+  }
+}
+
+function onSlider(el) {
+  document.getElementById('len-val').textContent = el.value;
+}
+
+function syncCustom() {}
+
+function generate() {
+  const pwEl = document.getElementById('pw-out');
+  pwEl.classList.add('generating-anim');
+
+  setTimeout(() => {
+    let pw, poolSize, len;
+    const m = MODES_CFG[currentMode];
+
+    if (currentMode === 'custom') {
+      const passphrase = document.getElementById('c-passphrase').checked;
+      if (passphrase) {
+        pw = generatePassphrase();
+        poolSize = WORDS.length;
+        len = pw.split(/[-@#$&*_+!]/).length;
+      } else {
+        len = parseInt(document.getElementById('len-slider').value);
+        const cfg = {
+          upper: document.getElementById('c-upper').checked,
+          lower: document.getElementById('c-lower').checked,
+          num:   document.getElementById('c-num').checked,
+          sym:   document.getElementById('c-sym').checked,
+          symSet: m.sym,
+          exclude: document.getElementById('c-exclude').value
+        };
+        const pool = buildPool(cfg);
+        if (!pool.length) { alert('Please select at least one character set.'); return; }
+        pw = generateRandom(len, pool);
+        poolSize = pool.length;
+      }
+    } else {
+      len = m.minLen + cryptoRand(m.maxLen - m.minLen + 1);
+      const cfg = { upper: true, lower: true, num: true, sym: true, symSet: m.sym, exclude: '' };
+      const pool = buildPool(cfg);
+      pw = generateRandom(len, pool);
+      poolSize = pool.length;
+      len = pw.length;
+    }
+
+    const entropy = calcEntropy(len, poolSize);
+    const rating = getRating(entropy);
+    const pct = Math.min(100, Math.round((entropy / 128) * 100));
+
+    currentPw = pw;
+    pwEl.classList.remove('generating-anim');
+    pwEl.innerHTML = colorizePassword(pw);
+
+    document.getElementById('entropy-bar').style.width = pct + '%';
+    document.getElementById('entropy-bar').style.background = rating.color;
+    document.getElementById('entropy-label').textContent = entropy + ' bits — ' + rating.label;
+
+    document.getElementById('s-entropy').textContent = entropy + 'b';
+    document.getElementById('s-len').textContent = pw.length;
+    document.getElementById('s-pool').textContent = poolSize;
+    document.getElementById('s-rating').textContent = rating.label;
+    document.getElementById('s-rating').style.color = rating.color;
+
+    const sc = document.getElementById('storage-card');
+    sc.classList.add('show');
+    document.getElementById('storage-text').textContent = STORAGE_TIPS[currentMode];
+
+    addHistory(pw, currentMode, rating.label, entropy);
+  }, 120);
+}
+
+function refreshPw() { generate(); }
+
+function addHistory(pw, mode, rating, entropy) {
+  history.unshift({ pw, mode, rating, entropy });
+  if (history.length > 6) history.pop();
+
+  const hs = document.getElementById('history-section');
+  const hl = document.getElementById('hist-list');
+  hs.classList.add('show');
+  hl.innerHTML = history.map(h =>
+    `<div class="hist-item" onclick="usePw('${h.pw.replace(/'/g,"\\'")}')">
+      <div class="hist-pw">${h.pw}</div>
+      <div class="hist-meta">
+        <span class="hist-badge">${h.mode}</span>
+        <span class="hist-badge">${h.entropy}b</span>
+        <span class="hist-badge">${h.rating}</span>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function usePw(pw) {
+  currentPw = pw;
+  document.getElementById('pw-out').innerHTML = colorizePassword(pw);
+  copyPw();
+}
+
+function copyPw() {
+  if (!currentPw) return;
+  navigator.clipboard.writeText(currentPw).then(() => {
+    const toast = document.getElementById('copy-toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  }).catch(() => {
+    const el = document.createElement('textarea');
+    el.value = currentPw;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    const toast = document.getElementById('copy-toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  });
+}
+
+// Init slider for default mode
+(function() {
+  const cfg = MODES_CFG['instagram'];
+  const slider = document.getElementById('len-slider');
+  slider.min = cfg.minLen; slider.max = cfg.maxLen;
+  slider.value = Math.round((cfg.minLen + cfg.maxLen) / 2);
+  document.getElementById('len-val').textContent = slider.value;
+  generate();
+})();
+</script>
+</body>
+</html>
